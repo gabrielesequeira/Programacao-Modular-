@@ -1,152 +1,241 @@
 import re
-import random
 
-# Lista global para armazenar clientes
-clientes_registrados = []
+ARQUIVO_CLIENTES = "clientes.txt"
 
-def criaCliente(nome, cpf, endereco, telefone, email, senha):
+__all__ = ["validaCpf", "criaCliente", "atualizaDados", "excluiCliente", "exibeCliente", "exibeTodosClientes"]
+
+# Funções de validação
+
+
+def validaCpf(cpf):
     """
-    Cria um novo cliente. Retorna 0 se criado com sucesso, erros específicos caso contrário.
+    -> Objetivo: Validar o CPF fornecido.
+    -> Descrição: A função validaCpf() tem como objetivo verificar se o CPF informado é válido, realizando a remoção de caracteres não numéricos e aplicando o algoritmo de verificação do CPF.
+    -> Parâmetros de entrada: 
+        - cpf (str): O CPF a ser validado.
+    -> Retornos previstos:
+        - Retorna `True` se o CPF for válido, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O parâmetro cpf deve ser uma string.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando a validade do CPF.
     """
-    if not validaCPF(cpf):
-        return 1  # CPF inválido
-    if not validaTelefone(telefone):
-        return 2  # Telefone inválido
-    if not validaEmail(email):
-        return 3  # Email inválido
+    cpf = ''.join(filter(str.isdigit, cpf))
+    if len(cpf) != 11:
+        return False
 
-    # Checa se CPF ou email já existem
-    if any(cliente['cpf'] == cpf or cliente['email'] == email for cliente in clientes_registrados):
-        return 6  # CPF ou Email já existe
+    def calcula_dv(cpf, pesos):
+        soma = sum(int(digit) * peso for digit, peso in zip(cpf, pesos))
+        dv = 11 - (soma % 11)
+        return 0 if dv > 9 else dv
 
-    novo_cliente = {
-        "nome": nome,
-        "cpf": cpf,
-        "endereco": endereco,
-        "telefone": telefone,
-        "email": email,
-        "senha": senha
-    }
-    clientes_registrados.append(novo_cliente)
-    return 0  # Criado com sucesso
+    if cpf == cpf[0] * len(cpf):
+        return False
 
-def validaCPF(cpf):
-    """
-    Valida se o CPF tem 11 dígitos e passa pelo algoritmo de validação.
-    Retorna True se for válido, False se não.
-    """
-    return bool(re.match(r'^\d{11}$', cpf))
+    pesos_1 = [10, 9, 8, 7, 6, 5, 4, 3, 2]
+    pesos_2 = [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]
+
+    dv1 = calcula_dv(cpf[:9], pesos_1)
+    dv2 = calcula_dv(cpf[:9] + str(dv1), pesos_2)
+
+    return cpf[-2:] == f'{dv1}{dv2}'
 
 def validaTelefone(telefone):
     """
-    Valida o formato do telefone (apenas números, mínimo de 8 dígitos).
+    -> Objetivo: Validar o número de telefone fornecido.
+    -> Descrição: A função validaTelefone() tem como objetivo validar se o telefone informado possui o formato correto (10 ou 11 dígitos).
+    -> Parâmetros de entrada:
+        - telefone (str): O número de telefone a ser validado.
+    -> Retornos previstos:
+        - Retorna `True` se o telefone for válido, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O parâmetro telefone deve ser uma string contendo apenas números.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando a validade do telefone.
     """
-    return bool(re.match(r'^\d{8,}$', telefone))
+    return re.fullmatch(r"\d{10,11}", telefone) is not None
 
 def validaEmail(email):
     """
-    Valida o formato do email.
+    -> Objetivo: Validar o endereço de e-mail fornecido.
+    -> Descrição: A função validaEmail() tem como objetivo validar o formato de um e-mail, verificando se ele segue o padrão correto.
+    -> Parâmetros de entrada:
+        - email (str): O endereço de e-mail a ser validado.
+    -> Retornos previstos:
+        - Retorna `True` se o e-mail for válido, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O parâmetro email deve ser uma string.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando a validade do e-mail.
     """
-    return bool(re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', email))
+    return re.fullmatch(r"[^@]+@[^@]+\.[^@]+", email) is not None
 
-def login(email, senha):
-    """
-    Autentica um cliente pelo email e senha. Retorna True se bem-sucedido, False se não.
-    """
-    for cliente in clientes_registrados:
-        if cliente['email'] == email and cliente['senha'] == senha:
-            return True
-    return False
+# Funções principais
 
-def atualizaDados(cpf, endereco_novo=None, telefone_novo=None):
+def criaCliente(nome, cpf, endereco, telefone, email):
     """
-    Atualiza os dados de endereço ou telefone de um cliente.
+    -> Objetivo: Criar um novo cliente no sistema.
+    -> Descrição: A função criaCliente() tem como objetivo adicionar um novo cliente ao sistema, realizando a validação dos dados (CPF, telefone, e-mail) e verificando se o CPF já está cadastrado.
+    -> Parâmetros de entrada: 
+        - nome (str): Nome do cliente.
+        - cpf (str): CPF do cliente.
+        - endereco (str): Endereço do cliente.
+        - telefone (str): Número de telefone do cliente.
+        - email (str): Endereço de e-mail do cliente.
+    -> Retornos previstos:
+        - Retorna `True` se o cliente for criado com sucesso, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O nome, cpf, endereco, telefone e email devem ser strings.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando o sucesso da criação.
     """
-    for cliente in clientes_registrados:
-        if cliente['cpf'] == cpf:
-            if endereco_novo:
-                cliente['endereco'] = endereco_novo
-            if telefone_novo:
-                cliente['telefone'] = telefone_novo
-            return 0  # Dados atualizados com sucesso
-    return 1  # CPF não encontrado
+    if not validaCpf(cpf):
+        return False
+    if not validaTelefone(telefone):
+        return False
+    if not validaEmail(email):
+        return False
+    if buscaCliente(cpf) != "Cliente não encontrado.":
+        return False
+    with open(ARQUIVO_CLIENTES, "a") as arquivo:
+        arquivo.write(f"{nome};{cpf};{endereco};{telefone};{email}\n")
+    return True
 
-def solicitaRecuperacaoSenha(email):
+def atualizaDados(cpf, endereco_novo=None, telefone_novo=None, email_novo=None):
     """
-    Gera um código de recuperação de senha e o envia para o email.
-    Retorna 0 se bem-sucedido, 1 se o email for inválido.
+    -> Objetivo: Atualizar os dados de um cliente existente.
+    -> Descrição: A função atualizaDados() tem como objetivo atualizar as informações de um cliente no sistema, validando os novos dados fornecidos (CPF, telefone, e-mail).
+    -> Parâmetros de entrada: 
+        - cpf (str): O CPF do cliente a ser atualizado.
+        - endereco_novo (str, opcional): Novo endereço do cliente.
+        - telefone_novo (str, opcional): Novo telefone do cliente.
+        - email_novo (str, opcional): Novo e-mail do cliente.
+    -> Retornos previstos:
+        - Retorna `True` se os dados forem atualizados com sucesso, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O cpf deve ser uma string e os novos dados (endereco_novo, telefone_novo, email_novo) devem ser strings ou None.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando o sucesso da atualização.
     """
-    if validaEmail(email):
-        codigo_recuperacao = random.randint(100000, 999999)
-        # Código seria enviado para o email (simulação aqui)
-        print(f"Código de recuperação enviado para {email}: {codigo_recuperacao}")
-        return 0
-    return 1  # Email inválido
+    if not validaCpf(cpf):
+        return False
+    if telefone_novo and not validaTelefone(telefone_novo):
+        return False
+    if email_novo and not validaEmail(email_novo):
+        return False
 
-def redefineSenha(cpf, codigo_recuperacao, senha_nova):
-    """
-    Redefine a senha usando um código de recuperação. Simulação aqui.
-    """
-    # Simulação: aceitando qualquer código
-    for cliente in clientes_registrados:
-        if cliente['cpf'] == cpf:
-            cliente['senha'] = senha_nova
-            return 0  # Senha redefinida com sucesso
-    return 1  # CPF não encontrado
+    cliente = buscaCliente(cpf)
+    if cliente == "Cliente não encontrado.":
+        return False
 
-def trocaSenha(cpf, senha_atual, senha_nova):
-    """
-    Troca a senha do cliente. Retorna 0 se bem-sucedido, erros específicos caso contrário.
-    """
-    for cliente in clientes_registrados:
-        if cliente['cpf'] == cpf:
-            if cliente['senha'] == senha_atual:
-                cliente['senha'] = senha_nova
-                return 0  # Senha trocada com sucesso
-            return 2  # Senha atual incorreta
-    return 1  # CPF não encontrado
+    linhas = []
+    atualizado = False
 
-def excluiCliente(senha, cpf):
+    with open(ARQUIVO_CLIENTES, "r+") as arquivo:
+        linhas = arquivo.readlines()
+        arquivo.seek(0)
+        for linha in linhas:
+            dados = linha.strip().split(";")
+            if dados[1] == cpf:
+                if endereco_novo:
+                    dados[2] = endereco_novo
+                if telefone_novo:
+                    dados[3] = telefone_novo
+                if email_novo:
+                    dados[4] = email_novo
+                atualizado = True
+            arquivo.write(";".join(dados) + "\n")
+        arquivo.truncate()
+    return atualizado
+
+def excluiCliente(cpf):
     """
-    Exclui um cliente se a senha e o CPF estiverem corretos.
+    -> Objetivo: Excluir um cliente do sistema.
+    -> Descrição: A função excluiCliente() tem como objetivo remover um cliente do sistema com base no CPF fornecido, após validar o CPF.
+    -> Parâmetros de entrada:
+        - cpf (str): O CPF do cliente a ser excluído.
+    -> Retornos previstos:
+        - Retorna `True` se o cliente for excluído com sucesso, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O parâmetro cpf deve ser uma string.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando o sucesso da exclusão.
     """
-    for cliente in clientes_registrados:
-        if cliente['cpf'] == cpf and cliente['senha'] == senha:
-            clientes_registrados.remove(cliente)
-            return 0  # Cliente excluído com sucesso
-    return 1  # Erro ao excluir cliente
+    if not validaCpf(cpf):
+        return False
+
+    cliente = buscaCliente(cpf)
+    if cliente == "Cliente não encontrado.":
+        return False
+
+    with open(ARQUIVO_CLIENTES, "r+") as arquivo:
+        linhas = arquivo.readlines()
+        arquivo.seek(0)
+        for linha in linhas:
+            dados = linha.strip().split(";")
+            if dados[1] != cpf:
+                arquivo.write(linha)
+        arquivo.truncate()
+
+    return True
 
 def exibeCliente(cpf):
     """
-    Exibe as informações de um cliente específico pelo CPF.
+    -> Objetivo: Exibir os dados de um cliente específico.
+    -> Descrição: A função exibeCliente() tem como objetivo mostrar as informações de um cliente, localizado pelo CPF fornecido.
+    -> Parâmetros de entrada:
+        - cpf (str): O CPF do cliente a ser exibido.
+    -> Retornos previstos:
+        - Retorna `True` se o cliente for encontrado e exibido com sucesso, `False` caso contrário.
+    -> Assertivas de entrada:
+        - O parâmetro cpf deve ser uma string.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando o sucesso da exibição.
     """
-    for cliente in clientes_registrados:
-        if cliente['cpf'] == cpf:
-            return cliente
-    return None  # Cliente não encontrado
+    cliente = buscaCliente(cpf)
+    if cliente == "Cliente não encontrado.":
+        return False
+    return True
 
 def exibeTodosClientes():
     """
-    Exibe todos os clientes registrados.
+    -> Objetivo: Exibir todos os clientes cadastrados no sistema.
+    -> Descrição: A função exibeTodosClientes() tem como objetivo listar todos os clientes registrados no sistema.
+    -> Parâmetros de entrada: Nenhum.
+    -> Retornos previstos:
+        - Retorna `True` se todos os clientes forem exibidos com sucesso, `False` caso contrário.
+    -> Assertivas de entrada:
+        - Não há validação de entrada, pois a função não recebe parâmetros.
+    -> Assertivas de saída:
+        - Retorna um valor booleano (True ou False) indicando o sucesso da exibição.
     """
-    return clientes_registrados
+    with open(ARQUIVO_CLIENTES, "r") as arquivo:
+        clientes = arquivo.readlines()
+        if not clientes:
+            return False
+    return True
 
-def salvar_clientes_txt():
+def buscaCliente(cpf):
     """
-    Salva os dados dos clientes em um arquivo TXT.
+    -> Objetivo: Buscar um cliente pelo CPF.
+    -> Descrição: A função buscaCliente() tem como objetivo procurar um cliente no sistema utilizando o CPF fornecido. Se encontrado, retorna os dados do cliente.
+    -> Parâmetros de entrada:
+        - cpf (str): O CPF do cliente a ser buscado.
+    -> Retornos previstos:
+        - Retorna um dicionário com os dados do cliente, caso encontrado. Retorna uma string "Cliente não encontrado." caso não encontre o cliente.
+    -> Assertivas de entrada:
+        - O parâmetro cpf deve ser uma string.
+    -> Assertivas de saída:
+        - Retorna um dicionário ou uma string, dependendo se o cliente foi encontrado.
     """
-    with open("clientes.txt", "w") as arquivo:
-        for cliente in clientes_registrados:
-            arquivo.write(f"{cliente['nome']},{cliente['cpf']},{cliente['endereco']},{cliente['telefone']},{cliente['email']},{cliente['senha']}\n")
-
-def carregar_clientes_txt():
-    """
-    Carrega os dados dos clientes a partir de um arquivo TXT.
-    """
-    try:
-        with open("clientes.txt", "r") as arquivo:
-            for linha in arquivo:
-                nome, cpf, endereco, telefone, email, senha = linha.strip().split(',')
-                criaCliente(nome, cpf, endereco, telefone, email, senha)
-    except FileNotFoundError:
-        print("Arquivo clientes.txt não encontrado. Inicializando lista de clientes vazia.")
+    with open(ARQUIVO_CLIENTES, "r") as arquivo:
+        for linha in arquivo:
+            dados = linha.strip().split(";")
+            if dados[1] == cpf:
+                return {
+                    "cpf": dados[1],
+                    "endereco": dados[2],
+                    "telefone": dados[3],
+                    "email": dados[4]
+                }
+    return "Cliente não encontrado."
